@@ -5,26 +5,80 @@
 	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.11.4/paper-core.min.js"></script>
 </head>
 <body>
-<canvas id="canvas" width="300px" height="150px"></canvas>
+<canvas id="canvas" width="800px" height="600px"></canvas>
 <script type="text/javascript">
 	// Only executed our code once the DOM is ready.
 	window.onload = function() {
+
 		// Get a reference to the canvas object
 		var canvas = document.getElementById('canvas');
 		// Create an empty project and a view for the canvas:
 		paper.setup(canvas);
-		// Create a Paper.js Path to draw a line into it:
+
+		var radius = 100;
+		var width, height, center;
+		var points = 10;
+		var smooth = true;
 		var path = new paper.Path();
-		// Give the stroke a color
-		path.strokeColor = 'black';
-		var start = new paper.Point(100, 100);
-		// Move to start and draw a line from there
-		path.moveTo(start);
-		// Note that the plus operator on Point objects does not work
-		// in JavaScript. Instead, we need to call the add() function:
-		path.lineTo(start.add([ 200, -50 ]));
-		// Draw the view now:
-		paper.view.draw();
+		var mousePos = {
+			x: paper.view.center.x,
+			y: paper.view.center.y
+		};
+		var pathHeight = mousePos.y;
+		var tool = new paper.Tool();
+		path.fillColor = 'black';
+		initializePath();
+
+		function initializePath() {
+			center = paper.view.center;
+			width = paper.view.size.width;
+			height = paper.view.size.height / 2;
+			path.segments = [];
+
+			for (var i=0; i<points; i++) {
+				var angle = Math.PI * 2 * (i/points);
+				var x = center.x + Math.cos(angle) * radius;
+				var y = center.y + Math.sin(angle) * radius;
+				var point = new paper.Point(x, y);
+				path.add(point);
+			}
+
+			path.closed = true;
+			path.fullySelected = true;
+		}
+
+		paper.view.onFrame = function(event) {
+			pathHeight += (center.y - mousePos.y - pathHeight) / 10;
+			for (var i = 1; i < points; i++) {
+				var sinSeed = event.count + (i + i % 10) * 100;
+				var sinHeight = Math.sin(sinSeed / 200) * pathHeight;
+				var yPos = Math.sin(sinSeed / 100) * sinHeight + height;
+				path.segments[i].point.y = yPos;
+			}
+			if (smooth)
+				path.smooth({ type: 'continuous' });
+		}
+
+		tool.onMouseMove = function(event) {
+			mousePos = event.point;
+		}
+
+		tool.onMouseDown = function(event) {
+			smooth = !smooth;
+			if (!smooth) {
+				// If smooth has been turned off, we need to reset
+				// the handles of the path:
+				for (var i = 0, l = path.segments.length; i < l; i++) {
+					var segment = path.segments[i];
+					segment.handleIn = segment.handleOut = null;
+				}
+			}
+		}
+
+		// Reposition the path whenever the window is resized:
+		function onResize(event) {
+			initializePath();
+		}
 	}
 </script>
 </body>
