@@ -44,16 +44,29 @@
 			}
 
 			path.closed = true;
-			path.fullySelected = true;
+			path.fullySelected = false;
 		}
 
 		paper.view.onFrame = function(event) {
 			pathHeight += (center.y - mousePos.y - pathHeight) / 10;
-			for (var i = 1; i < points; i++) {
+
+			for (var i = 0; i<points; i++) {
 				var sinSeed = event.count + (i + i % 10) * 100;
 				var sinHeight = Math.sin(sinSeed / 200) * pathHeight;
 				var yPos = Math.sin(sinSeed / 100) * sinHeight + height;
-				path.segments[i].point.y = yPos;
+			}
+
+			for (var i = 1; i < points; i++) {
+				var sinSeed = event.count + (i + i % 10) * 100;
+				var sinHeight = Math.sin(sinSeed / 200) * pathHeight;
+				var delta = Math.sin(sinSeed / 100) * sinHeight;
+
+				var angle = Math.PI * 2 * (i/points);
+				var x = center.x + Math.cos(angle) * (radius + delta);
+				var y = center.y + Math.sin(angle) * (radius + delta);
+
+				path.segments[i].point.x = x;
+				path.segments[i].point.y = y;
 			}
 			if (smooth)
 				path.smooth({ type: 'continuous' });
