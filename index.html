@@ -15,7 +15,9 @@
 		// Create an empty project and a view for the canvas:
 		paper.setup(canvas);
 
-		var radius = 300;
+		var rootSpeed = 0.01;
+		var speedOffset = 0;
+		var radius = 175;
 		var width, height, center;
 		var points = 10;
 		var smooth = true;
@@ -48,12 +50,14 @@
 		}
 
 		paper.view.onFrame = function(event) {
+			var speed = (rootSpeed + speedOffset);
+			speedOffset *= 0.99;
 			pathHeight += (center.y - mousePos.y - pathHeight) / 10;
 
 			for (var i = 0; i < points; i++) {
 				var sinSeed = event.count + (i + i % 10) * 100;
-				var sinHeight = Math.sin(sinSeed / 200) * pathHeight;
-				var delta = Math.sin(sinSeed / 100) * sinHeight;
+				var sinHeight = Math.sin(sinSeed * speed / 2) * pathHeight;
+				var delta = Math.sin(sinSeed * speed) * sinHeight;
 
 				var angle = Math.PI * 2 * (i/points);
 				var x = center.x + Math.cos(angle) * (radius + delta);
@@ -71,15 +75,17 @@
 		}
 
 		tool.onMouseDown = function(event) {
-			smooth = !smooth;
-			if (!smooth) {
-				// If smooth has been turned off, we need to reset
-				// the handles of the path:
-				for (var i = 0, l = path.segments.length; i < l; i++) {
-					var segment = path.segments[i];
-					segment.handleIn = segment.handleOut = null;
-				}
-			}
+			// smooth = !smooth;
+			// if (!smooth) {
+			// 	// If smooth has been turned off, we need to reset
+			// 	// the handles of the path:
+			// 	for (var i = 0, l = path.segments.length; i < l; i++) {
+			// 		var segment = path.segments[i];
+			// 		segment.handleIn = segment.handleOut = null;
+			// 	}
+			// }
+
+			speedOffset = 0.02;
 		}
 
 		// Reposition the path whenever the window is resized:
