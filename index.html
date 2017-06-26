@@ -19,9 +19,10 @@
 		var speedOffset = 0;
 		var radius = 175;
 		var width, height, center;
-		var points = 10;
+		var points = 11;
 		var smooth = true;
 		var path = new paper.Path();
+		var myText;
 		var mousePos = {
 			x: paper.view.center.x,
 			y: paper.view.center.y
@@ -47,6 +48,16 @@
 
 			path.closed = true;
 			path.fullySelected = false;
+
+			var pointTextLocation = center;
+			myText = new paper.PointText(pointTextLocation);
+			myText.fillColor = 'white';
+			myText.content = 'GF';
+			myText.fontSize = '100px';
+			myText.fontFamily = 'Futura';
+			myText.fontWeight = 'bold';
+			myText.position.x -= myText.bounds.width/2;
+			myText.position.y += myText.bounds.height/4;
 		}
 
 		paper.view.onFrame = function(event) {
@@ -68,6 +79,24 @@
 			}
 			if (smooth)
 				path.smooth({ type: 'continuous' });
+
+			var cx = 0;
+			var cy = 0;
+
+			for (var i = 0; i < points; i++) {
+				cx += path.segments[i].point.x;
+				cy += path.segments[i].point.y;
+			}
+
+			myText.matrix.reset();
+
+			cx /= points;
+			cy /= points;
+
+			myText.skew(mousePos);
+
+			myText.position.x = cx;
+			myText.position.y = cy;
 		}
 
 		tool.onMouseMove = function(event) {
@@ -85,7 +114,7 @@
 			// 	}
 			// }
 
-			speedOffset = 0.02;
+			speedOffset = 0.002;
 		}
 
 		// Reposition the path whenever the window is resized:
