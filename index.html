@@ -15,9 +15,9 @@
 		// Create an empty project and a view for the canvas:
 		paper.setup(canvas);
 
-		var rootSpeed = 0.01;
+		var rootSpeed = 0.02;
 		var speedOffset = 0;
-		var radius = 175;
+		var radius = 140;
 		var width, height, center;
 		var points = 11;
 		var smooth = true;
@@ -52,7 +52,7 @@
 			var pointTextLocation = center;
 			myText = new paper.PointText(pointTextLocation);
 			myText.fillColor = 'white';
-			myText.content = 'GF';
+			myText.content = 'GL';
 			myText.fontSize = '100px';
 			myText.fontFamily = 'Futura';
 			myText.fontWeight = 'bold';
@@ -69,6 +69,7 @@
 				var sinSeed = event.count + (i + i % 10) * 100;
 				var sinHeight = Math.sin(sinSeed * speed / 2) * pathHeight;
 				var delta = Math.sin(sinSeed * speed) * sinHeight;
+				delta *= 0.2;
 
 				var angle = Math.PI * 2 * (i/points);
 				var x = center.x + Math.cos(angle) * (radius + delta);
@@ -93,14 +94,19 @@
 			cx /= points;
 			cy /= points;
 
-			myText.skew(mousePos);
+			var mouseCopy = Object.assign({}, mousePos);
+			mouseCopy.x = (mouseCopy.x - width/2) / (width/2) * 10;
+			mouseCopy.y = (mouseCopy.y - height/2) / (height/2) * 10;
+
+			myText.skew(mouseCopy);
 
 			myText.position.x = cx;
 			myText.position.y = cy;
 		}
 
 		tool.onMouseMove = function(event) {
-			mousePos = event.point;
+			mousePos.x = (mousePos.x + event.point.x) / 2;
+			mousePos.y = (mousePos.y + event.point.y) / 2;
 		}
 
 		tool.onMouseDown = function(event) {
@@ -114,7 +120,7 @@
 			// 	}
 			// }
 
-			speedOffset = 0.002;
+			speedOffset = 0.03;
 		}
 
 		// Reposition the path whenever the window is resized:
