@@ -17,21 +17,22 @@
 		paper.setup(canvas);
 
 		var pointsWeLike = [
-			554.1627744872745, 300,
-			534.7928267984526, 386.6260897855751,
-			452.2166233742444, 414.3384563002629,
-			380.79496890149267, 433.57392527677905,
-			303.01842097507574, 411.92270855319634,
-			289.6131995475023, 332.41248908355425,
-			286.3928847594946, 266.64194117908556,
-			308.0667895440347, 193.9034193537076,
-			383.79737582230956, 187.30827354053258,
-			446.87871510923884, 197.3499324053576,
-			496.78370599085247, 237.80088893394617
+			569.3266532323005,300,
+			517.9857976214394,375.82486799137916,
+			460.9749311094065,433.5164751289378,
+			375.7969547733234,468.33587709367833,
+			322.8030761218688,389.0899993512671,
+			244.58244803015532,345.6347107259719,
+			265.5583362533005,260.52436576925754,
+			296.5982197003226,180.66798420153413,
+			380.19176258907476,162.2306826674563,
+			471.401821775297,143.65181907107424,
+			519.8476503940371,222.97859188643946
 		];
 
 		var rootSpeed = 0.02;
 		var speedOffset = 0;
+		var speed = rootSpeed + speedOffset;
 		var radius = 140;
 		var width, height, center;
 		var points = 11;
@@ -47,6 +48,8 @@
 		var tool = new paper.Tool();
 		var isFindingPointsWeLike = false;
 		path.fillColor = 'black';
+		var interp = 0;
+		var wigglePoints = [];
 		initializePath();
 
 		function initializePath() {
@@ -63,6 +66,8 @@
 				var point = new paper.Point(x, y);
 				path.add(point);
 				phases.push( (i + i % 4) * 100 );
+				wigglePoints.push(0);
+				wigglePoints.push(0);
 			}
 
 			path.closed = true;
@@ -81,32 +86,34 @@
 
 		function animateDriftToNicePoints(event) {
 			for (var i = 0; i < points; i++) {
-				path.segments[i].point.x = path.segments[i].point.x * 0.9 + pointsWeLike[i*2] *0.1;
-				path.segments[i].point.y = path.segments[i].point.y * 0.9 + pointsWeLike[i*2+1] *0.1;
+				path.segments[i].point.x = interp * pointsWeLike[i*2] + (1 - interp) * wigglePoints[i*2];
+				path.segments[i].point.y = interp * pointsWeLike[i*2+1] + (1 - interp) * wigglePoints[i*2+1];
 			}
 		}
 
 		function animateWiggle(event) {
-			var speed = (rootSpeed + speedOffset);
+			speed = (rootSpeed + speedOffset);
 			speedOffset *= 0.95;
-			pathHeight += (Math.abs(center.y - mousePos.y) + (speed - rootSpeed) * 500 - pathHeight) / 10;
+			pathHeight += (Math.abs(center.y - mousePos.y) + (speed - rootSpeed) * 1000 - pathHeight) / 10;
 
 			for (var i = 0; i < points; i++) {
 				phases[i] += speed * 1;
 				var sinHeight = Math.sin(phases[i]) * pathHeight;
-				var delta = Math.sin(phases[i] + Math.sin(phases[i])) * sinHeight;
+				var delta = Math.sin(phases[i] + Math.sin(phases[i]) + (i * event.count) / 100) * sinHeight;
 				delta *= 0.2;
 
 				var angle = Math.PI * 2 * (i/points);
 				var x = center.x + Math.cos(angle) * (radius + delta);
 				var y = center.y + Math.sin(angle) * (radius + delta);
 
-				path.segments[i].point.x = x;
-				path.segments[i].point.y = y;
+				wigglePoints[2*i] = x;
+				wigglePoints[2*i+1] = y;
 			}
 			if (smooth)
 				path.smooth({ type: 'continuous' });
+		}
 
+		function positionText() {
 			var cx = 0;
 			var cy = 0;
 
@@ -115,39 +122,33 @@
 				cy += path.segments[i].point.y;
 			}
 
-			// path.matrix.reset();
-
-			// path.rotate(event.count * -0.25);
-
-			myText.matrix.reset();
-
 			cx /= points;
 			cy /= points;
+
+			myText.matrix.reset();
 
 			var mouseNorm = Object.assign({}, mousePos);
 			mouseNorm.x = (2 * mousePos.x / width - 1);
 			mouseNorm.y = (2 * mousePos.y / height - 1);
 
 			var skewDegrees = {
-				x: -mouseNorm.x * (mouseNorm.y * 20),
-				y: mouseNorm.x * (-(mouseNorm.y * mouseNorm.y) * 20)
+				x: (1 - interp) * (-mouseNorm.x * (mouseNorm.y * 20)),
+				y: (1 - interp) * (mouseNorm.x * (-(mouseNorm.y * mouseNorm.y) * 20))
 			};
 
 			myText.skew(skewDegrees);
 			myText.scale(1.0 - (speed - rootSpeed));
-			// myText.shear(skewDegrees);
 
 			myText.position.x = cx;
 			myText.position.y = cy;
 		}
 
 		paper.view.onFrame = function(event) {
+			interp = interp * 0.95 + (isFindingPointsWeLike ? 0.05 : 0.0);
 
-			if (isFindingPointsWeLike) {
-				animateDriftToNicePoints(event);
-			} else {
-				animateWiggle(event);
-			}
+			animateWiggle(event);
+			animateDriftToNicePoints(event);
+			positionText();
 		}
 
 		tool.onMouseMove = function(event) {
@@ -166,7 +167,13 @@
 			// 	}
 			// }
 
-			speedOffset = 0.5;
+			var p = path;
+
+			var dx = mousePos.x - center.x;
+			var dy = mousePos.y - center.y;
+			var dist = Math.sqrt(dx*dx + dy*dy);
+
+			speedOffset = 0.5 / (dist/100 + 1);
 		}
 
 		paper.view.onMouseEnter = function(event) {
@@ -175,7 +182,7 @@
 		}
 
 		paper.view.onMouseLeave = function(event) {
-			// isFindingPointsWeLike = true;
+			isFindingPointsWeLike = true;
 			console.log("Returning to points we like");
 		}
 
