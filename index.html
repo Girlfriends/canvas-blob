@@ -5,7 +5,8 @@
 	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.11.4/paper-core.min.js"></script>
 </head>
 <body>
-<canvas id="canvas" width="800px" height="600px"></canvas>
+<canvas id="canvas" width="800px" height="600px" style="{background-color: blue}"></canvas>
+<link rel="stylesheet" href="style.css">
 <script type="text/javascript">
 	// Only executed our code once the DOM is ready.
 	window.onload = function() {
@@ -15,11 +16,26 @@
 		// Create an empty project and a view for the canvas:
 		paper.setup(canvas);
 
+		var pointsWeLike = [
+			554.1627744872745, 300,
+			534.7928267984526, 386.6260897855751,
+			452.2166233742444, 414.3384563002629,
+			380.79496890149267, 433.57392527677905,
+			303.01842097507574, 411.92270855319634,
+			289.6131995475023, 332.41248908355425,
+			286.3928847594946, 266.64194117908556,
+			308.0667895440347, 193.9034193537076,
+			383.79737582230956, 187.30827354053258,
+			446.87871510923884, 197.3499324053576,
+			496.78370599085247, 237.80088893394617
+		];
+
 		var rootSpeed = 0.02;
 		var speedOffset = 0;
 		var radius = 140;
 		var width, height, center;
 		var points = 11;
+		var phases;
 		var smooth = true;
 		var path = new paper.Path();
 		var myText;
@@ -29,14 +45,16 @@
 		};
 		var pathHeight = mousePos.y;
 		var tool = new paper.Tool();
+		var isFindingPointsWeLike = false;
 		path.fillColor = 'black';
 		initializePath();
 
 		function initializePath() {
 			center = paper.view.center;
 			width = paper.view.size.width;
-			height = paper.view.size.height / 2;
+			height = paper.view.size.height;
 			path.segments = [];
+			phases = [];
 
 			for (var i=0; i<points; i++) {
 				var angle = Math.PI * 2 * (i/points);
@@ -44,15 +62,16 @@
 				var y = center.y + Math.sin(angle) * radius;
 				var point = new paper.Point(x, y);
 				path.add(point);
+				phases.push( (i + i % 4) * 100 );
 			}
 
 			path.closed = true;
 			path.fullySelected = false;
 
 			var pointTextLocation = center;
-			myText = new paper.PointText(pointTextLocation);
+			if (!myText) myText = new paper.PointText(pointTextLocation);
 			myText.fillColor = 'white';
-			myText.content = 'GL';
+			myText.content = '♥ω♥';
 			myText.fontSize = '100px';
 			myText.fontFamily = 'Futura';
 			myText.fontWeight = 'bold';
@@ -60,15 +79,22 @@
 			myText.position.y += myText.bounds.height/4;
 		}
 
-		paper.view.onFrame = function(event) {
+		function animateDriftToNicePoints(event) {
+			for (var i = 0; i < points; i++) {
+				path.segments[i].point.x = path.segments[i].point.x * 0.9 + pointsWeLike[i*2] *0.1;
+				path.segments[i].point.y = path.segments[i].point.y * 0.9 + pointsWeLike[i*2+1] *0.1;
+			}
+		}
+
+		function animateWiggle(event) {
 			var speed = (rootSpeed + speedOffset);
-			speedOffset *= 0.99;
-			pathHeight += (center.y - mousePos.y - pathHeight) / 10;
+			speedOffset *= 0.95;
+			pathHeight += (Math.abs(center.y - mousePos.y) + (speed - rootSpeed) * 500 - pathHeight) / 10;
 
 			for (var i = 0; i < points; i++) {
-				var sinSeed = event.count + (i + i % 10) * 100;
-				var sinHeight = Math.sin(sinSeed * speed / 2) * pathHeight;
-				var delta = Math.sin(sinSeed * speed) * sinHeight;
+				phases[i] += speed * 1;
+				var sinHeight = Math.sin(phases[i]) * pathHeight;
+				var delta = Math.sin(phases[i] + Math.sin(phases[i])) * sinHeight;
 				delta *= 0.2;
 
 				var angle = Math.PI * 2 * (i/points);
@@ -89,19 +115,39 @@
 				cy += path.segments[i].point.y;
 			}
 
+			// path.matrix.reset();
+
+			// path.rotate(event.count * -0.25);
+
 			myText.matrix.reset();
 
 			cx /= points;
 			cy /= points;
 
-			var mouseCopy = Object.assign({}, mousePos);
-			mouseCopy.x = (mouseCopy.x - width/2) / (width/2) * 10;
-			mouseCopy.y = (mouseCopy.y - height/2) / (height/2) * 10;
+			var mouseNorm = Object.assign({}, mousePos);
+			mouseNorm.x = (2 * mousePos.x / width - 1);
+			mouseNorm.y = (2 * mousePos.y / height - 1);
 
-			myText.skew(mouseCopy);
+			var skewDegrees = {
+				x: -mouseNorm.x * (mouseNorm.y * 20),
+				y: mouseNorm.x * (-(mouseNorm.y * mouseNorm.y) * 20)
+			};
+
+			myText.skew(skewDegrees);
+			myText.scale(1.0 - (speed - rootSpeed));
+			// myText.shear(skewDegrees);
 
 			myText.position.x = cx;
 			myText.position.y = cy;
+		}
+
+		paper.view.onFrame = function(event) {
+
+			if (isFindingPointsWeLike) {
+				animateDriftToNicePoints(event);
+			} else {
+				animateWiggle(event);
+			}
 		}
 
 		tool.onMouseMove = function(event) {
@@ -120,7 +166,17 @@
 			// 	}
 			// }
 
-			speedOffset = 0.03;
+			speedOffset = 0.5;
+		}
+
+		paper.view.onMouseEnter = function(event) {
+			isFindingPointsWeLike = false;
+			console.log("Tracking the mouse");
+		}
+
+		paper.view.onMouseLeave = function(event) {
+			// isFindingPointsWeLike = true;
+			console.log("Returning to points we like");
 		}
 
 		// Reposition the path whenever the window is resized:
